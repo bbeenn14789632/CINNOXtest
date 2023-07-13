@@ -21,15 +21,17 @@
 
 
 int main() {
+    // the variable for the exponetial backoff
     int maxTry =10;
     float base = 0.5;
     int multiplier = 2;
     int maxInterval = 8;
-	int sockfd;
-	char buffer[MAXLINE];
-	char client_message[2000];
-	struct sockaddr_in	 servaddr;
-    
+    // the variable for the socket
+	int sockfd; // a linux file descriptor
+	char buffer[MAXLINE]; // incoming massage buffer
+	char client_message[2000]; // the message want to send
+	struct sockaddr_in	 servaddr; // the server address info structure
+    // get the message to send
 	printf("Enter message: ");
     scanf("%s",client_message);
 	// Creating socket file descriptor
@@ -37,6 +39,7 @@ int main() {
 		perror("socket creation failed");
 		exit(EXIT_FAILURE);
 	}
+    // config the time interval of request sending and response receiving  
 	struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
@@ -48,6 +51,7 @@ int main() {
         perror("error");
         exit(EXIT_FAILURE);
     };
+    // init the server address info
 	memset(&servaddr, 0, sizeof(servaddr));	
 	// Filling server information
 	servaddr.sin_family = AF_INET;
@@ -56,24 +60,29 @@ int main() {
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");// to specific address
 	int n, len;
 	int try=1;
+    // send the message
 	sendto(sockfd, (const char *)client_message, strlen(client_message),
 		MSG_CONFIRM, (const struct sockaddr *) &servaddr,
 			sizeof(servaddr));
     printf("Message sent\n");
+    // check if the response is normal if not retry 
 	while((n = recvfrom(sockfd, (char *)buffer, MAXLINE,MSG_WAITALL, (struct sockaddr *) &servaddr,&len))<0){
+        // ignore the case of other error, treated every thing as timeout
+        // the max try limitation if exceed exit with 1
         if(try>maxTry){
             printf("Max retry is reached, stop trying\n");
             return 1;
         }
-        
+        // resend the message
         sendto(sockfd, (const char *)client_message, strlen(client_message),MSG_CONFIRM, (const struct sockaddr *) &servaddr,sizeof(servaddr));
         if(tv.tv_sec<8) tv.tv_sec = (int)min(maxInterval,base*pow(multiplier,try));// the interval would be the min between maxInterval and the exponetial backoff
         tv.tv_usec = 0;
+        //reconfigure the time out interval
         setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
         printf("response timeout,retrying...... %ld secs\n",tv.tv_sec);
         try ++;
     };
-    // n = recvfrom(sockfd, (char *)buffer, MAXLINE,MSG_WAITALL, (struct sockaddr *) &servaddr,&len);
+    // print the echo message if everything works fine
 	buffer[n] = '\0';
 	printf("Server echo: %s\n", buffer);
 	close(sockfd);
