@@ -9,7 +9,6 @@
 #include <netinet/in.h>
 #include <time.h>
 #include <math.h>
-#define PORT	 8080
 #define MAXLINE 1024
 #define MSG_CONFIRM 0 // using macOS for development so need to add this, a linux environment shouldn't worry about this
 #define min(a,b)             \ 
@@ -26,14 +25,22 @@ int main() {
     float base = 0.5;
     int multiplier = 2;
     int maxInterval = 8;
+    int PORT;
+    char addrstr[15];// 192.168.0.1
     // the variable for the socket
 	int sockfd; // a linux file descriptor
 	char buffer[MAXLINE]; // incoming massage buffer
 	char client_message[2000]; // the message want to send
 	struct sockaddr_in	 servaddr; // the server address info structure
     // get the message to send
+    printf("Target ip: ");
+    scanf("%s",addrstr);
+    printf("Target port: ");
+    scanf("%d",&PORT);
 	printf("Enter message: ");
     scanf("%s",client_message);
+    printf("Max Retry(enter 0 if not needed): ");
+    scanf("%d",&maxTry);
 	// Creating socket file descriptor
 	if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
 		perror("socket creation failed");
@@ -57,7 +64,7 @@ int main() {
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT);
 	// servaddr.sin_addr.s_addr = INADDR_ANY;// to any address
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");// to specific address
+    servaddr.sin_addr.s_addr = inet_addr(addrstr);// to specific address
 	int n, len;
 	int try=1;
     // send the message
@@ -70,6 +77,7 @@ int main() {
         // ignore the case of other error, treated every thing as timeout
         // the max try limitation if exceed exit with 1
         if(try>maxTry){
+            if(!maxTry) {printf("Connection timeout, no retry attemp.\n");return 1;}
             printf("Max retry is reached, stop trying\n");
             return 1;
         }
